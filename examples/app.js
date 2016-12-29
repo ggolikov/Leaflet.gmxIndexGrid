@@ -14,4 +14,8 @@ var bounds = map.getBounds(),
 
 var indexGrid = L.gmxIndexGrid();
 
-console.log(rect2);
+indexGrid.setGrid(grid)
+         .setBounds(smallBounds)
+         .clipGrid();
+
+console.log(indexGrid);
