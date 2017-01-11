@@ -1,5 +1,6 @@
 (function () {
 var KM_PER_DEGREE = 111.31949;
+var INDEXGRIDMINSIZE = 30;
 
 var gridSteps = [0.001, 0.002, 0.0025, 0.005, 0.01, 0.02, 0.025, 0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20, 30, 60, 120, 180],
     gridStepsLength = gridSteps.length;
@@ -87,6 +88,10 @@ L.GmxGrid = L.Polyline.extend({
             this.options.units = units;
     },
 
+    setIndexGrid: function (bool) {
+        this.options.indexGrid = bool;
+    },
+
     setTitleFormat: function (format) {
         this.options.titleFormat = Number(format);
     },
@@ -130,7 +135,8 @@ L.GmxGrid = L.Polyline.extend({
             xStep, yStep,
             // isOneDegree = this.options.isOneDegree,
             units = this.options.units,
-            centerY = (map.getCenter().lat * Math.PI) / 180;
+            centerY = (map.getCenter().lat * Math.PI) / 180,
+            indexGrid = this.options.indexGrid;
 
         for (i = 0; i < gridStepsLength; i++) {
             var step = gridSteps[i];
@@ -182,7 +188,137 @@ L.GmxGrid = L.Polyline.extend({
         this.setStyle({'stroke': true, 'weight': this.options.weight, 'color': this.options.color});
         this.options.textMarkers = textMarkers;
         this.setLatLngs(latlngArr);
+
+        if (indexGrid) {
+            var leftIndexPointsArr = [],
+                leftIndexTextMarkers = [],
+                topIndexPointsArr = [],
+                topIndexTextMarkers = [],
+                cur, prev,
+                height, width, center;
+
+            var topAndLefts = this._getTopAndLeftPoints(latlngArr, vBounds),
+                leftPoints = topAndLefts.leftPoints,
+                topPoints = topAndLefts.topPoints;
+
+            for (var i = 1; i < leftPoints.length; i++) {
+                prev = leftPoints[i-1];
+                cur = leftPoints[i];
+                height = cur.y - prev.y;
+                center = L.point([cur.x, prev.y + height / 2]);
+
+                leftIndexPointsArr.push(center);
+
+                if (height > INDEXGRIDMINSIZE) {
+                    leftIndexTextMarkers.push('L');
+                } else {
+                    leftIndexTextMarkers.push('');
+                }
+            }
+
+            for (var i = 1; i < topPoints.length; i++) {
+                prev = topPoints[i-1];
+                cur = topPoints[i];
+                width = cur.x - prev.x;
+                center = L.point([prev.x + width / 2, prev.y]);
+
+                topIndexPointsArr.push(center);
+
+                if (width > INDEXGRIDMINSIZE) {
+                    topIndexTextMarkers.push('T');
+                } else {
+                    topIndexTextMarkers.push('');
+                }
+            }
+
+            this.options.leftIndexPointsArr = leftIndexPointsArr;
+            this.options.topIndexPointsArr = topIndexPointsArr;
+            this.options.leftIndexTextMarkers = leftIndexTextMarkers;
+            this.options.topIndexTextMarkers = topIndexTextMarkers;
+        }
+
         return false;
+    },
+
+    // get left & top borders latlngs arrays (including borders)
+    _getTopAndLeftPoints: function (latLngs, bounds) {
+        var len = latLngs.length,
+            sw = bounds.getSouthWest(),
+            ne = bounds.getNorthEast(),
+            latFit, lngFit,
+            lats = [],
+            lngs = [],
+            topLatLngs = [],
+            leftLatLngs = [],
+            leftPoints,
+            leftLatLngs,
+            ll, lat, lng;
+
+        lats.push(sw.lat);
+        lngs.push(sw.lng);
+
+        for (var i = 0; i < len; i++) {
+            ll = latLngs[i],
+            latFit = ll.lat > sw.lat && ll.lat < ne.lat,
+            lngFit = ll.lng > sw.lng && ll.lng < ne.lng;
+
+            if (latFit && !this._checkDublicates(ll.lat, lats)) {
+                lats.push(ll.lat);
+            }
+
+            if (lngFit && !this._checkDublicates(ll.lng, lngs)) {
+                lngs.push(ll.lng);
+            }
+        }
+
+        lats.push(ne.lat);
+        lngs.push(ne.lng);
+        lats = lats.reverse();
+
+        // count leftLatLngs:
+        lng = lngs[0];
+        for (var i = 0; i < lats.length; i++) {
+            ll = L.latLng([lats[i], lng]);
+            leftLatLngs.push(ll);
+        }
+
+        // count topLatLngs:
+        lat = lats[0];
+        for (var j = 0; j < lngs.length; j++) {
+            ll = L.latLng([lat, lngs[j]]);
+            topLatLngs.push(ll);
+        }
+
+        leftPoints = leftLatLngs.map(function(latLng){
+            return map.latLngToLayerPoint(latLng);
+        }),
+        topPoints = topLatLngs.map(function(latLng){
+            return map.latLngToLayerPoint(latLng);
+        });
+
+
+        return {
+            leftPoints: leftPoints,
+            topPoints: topPoints
+        }
+    },
+
+    // check if latlng is already in left or top border array
+    _checkDublicates: function (value, array) {
+        var res = false;
+
+        if (!array.length) {
+            return res;
+        }
+
+        for (var i = 0; i < array.length; i++) {
+            if (value === array[i]) {
+                res = true;
+                break;
+            }
+        }
+
+        return res;
     },
 
     _getPathPartStr: function (points) {
@@ -222,8 +358,49 @@ L.GmxGrid = L.Polyline.extend({
                 this._containerText.appendChild(text);
             }
         }
+
+        if (options.indexGrid) {
+            this._addIndexPath(options);
+        }
+
         return str;
     },
+
+    _addIndexPath: function (options) {
+        if (options.leftIndexPointsArr) {
+            var leftArr = options.leftIndexPointsArr;
+            for (var i = 0; i < leftArr.length; i++) {
+                var p = leftArr[i];
+                if (options.leftIndexTextMarkers && options.leftIndexTextMarkers[i]) {
+                    var text = this._createElement('text'),
+                        dx = 20,
+                        dy = 0;
+                        // text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('x', p.x + dx);
+                    text.setAttribute('y', p.y + dy);
+                    text.textContent = options.leftIndexTextMarkers[i];
+                    this._containerText.appendChild(text);
+                }
+            }
+        }
+        if (options.topIndexPointsArr) {
+            var topArr = options.topIndexPointsArr;
+            for (var j = 0; j < topArr.length; j++) {
+                var p = topArr[j];
+                if (options.topIndexTextMarkers && options.topIndexTextMarkers[j]) {
+                    var text = this._createElement('text'),
+                        dx = 0,
+                        dy = 20;
+                        // text.setAttribute('text-anchor', 'middle');
+                    text.setAttribute('x', p.x + dx);
+                    text.setAttribute('y', p.y + dy);
+                    text.textContent = options.topIndexTextMarkers[j];
+                    this._containerText.appendChild(text);
+                }
+            }
+        }
+    },
+
     _updatePath: function () {
         if (!this._map) { return; }
         this._clipPoints();

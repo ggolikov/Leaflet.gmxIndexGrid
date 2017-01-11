@@ -65,7 +65,7 @@
 						});
 						var map = new L.Map('map', {layers: [osm], center: new L.LatLng(50, 20), zoom: 3});
 
-				        var grid = L.gmxGrid().addTo(map);
+				        var grid = L.gmxGrid({indexGrid: true}).addTo(map);
 
 				        var setColorBtn 	= document.getElementById("setColor"),
 				            setStepBtn 		= document.getElementById("setStep"),
@@ -110,7 +110,7 @@
 										grid.repaint();
 										updateInputsValues();
 								});
-					grid.setStep(70, 70);
+					grid.setStep(30, 10);
 					</script>
 					<script src="app.js"></script>
 				</body>

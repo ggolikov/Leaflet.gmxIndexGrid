@@ -9,7 +9,23 @@ L.GmxIndexGrid = L.LayerGroup.extend({
         return this;
     },
 
-    clipGrid: function () {
+    _getIndexLatLngs: function () {
+        var coordsObj = this._getClippedCoordinates(),
+            latLngsObj = this._getClippedLatLngs(coordsObj);
+
+        var leftLatLngs = latLngsObj.leftLatLngs,
+            topLatLngs = latLngsObj.topLatLngs;
+
+        for (var i = 0; i < leftLatLngs.length; i++) {
+            L.marker(leftLatLngs[i]).addTo(map);
+        }
+        for (var i = 0; i < topLatLngs.length; i++) {
+            L.marker(topLatLngs[i]).addTo(map);
+        }
+        console.log(latLngsObj);
+    },
+
+    _getEdgeCoordinates: function () {
         if (!this._bounds || !this._grid || !this._grid.getLatLngs().length) {
             return;
         }
@@ -23,8 +39,8 @@ L.GmxIndexGrid = L.LayerGroup.extend({
             lngs = [],
             ll;
 
-            lats.push(sw.lat);
-            lngs.push(sw.lng);
+        lats.push(sw.lat);
+        lngs.push(sw.lng);
 
         for (var i = 0; i < len; i++) {
             ll = gridLatLngs[i],
@@ -43,7 +59,37 @@ L.GmxIndexGrid = L.LayerGroup.extend({
         lats.push(ne.lat);
         lngs.push(ne.lng);
 
-        console.log(lats, lngs);
+        return {
+            lats: lats,
+            lngs: lngs
+        }
+    },
+
+    _getEdgeLatLngs: function (coordsObj) {
+        var lats = coordsObj.lats,
+            lngs = coordsObj.lngs,
+            topLatLngs = [],
+            leftLatLngs = [],
+            ll, lat, lng;
+
+        // count leftLatLngs:
+        lng = lngs[0];
+        for (var i = 0; i < lats.length; i++) {
+            ll = L.latLng([lats[i], lng]);
+            leftLatLngs.push(ll);
+        }
+
+        // count topLatLngs:
+        lat = lats[lats.length-1];
+        for (var j = 0; j < lngs.length; j++) {
+            ll = L.latLng([lat, lngs[j]]);
+            leftLatLngs.push(ll);
+        }
+
+        return {
+            leftLatLngs: leftLatLngs,
+            topLatLngs: topLatLngs
+        }
     },
 
     _checkDublicates: function (value, array) {
