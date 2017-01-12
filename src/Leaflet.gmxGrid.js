@@ -200,6 +200,12 @@ L.GmxGrid = L.Polyline.extend({
             var topAndLefts = this._getTopAndLeftPoints(latlngArr, vBounds),
                 leftPoints = topAndLefts.leftPoints,
                 topPoints = topAndLefts.topPoints;
+                numberIndexes = this._getNumberIndexes(leftPoints),
+                letterIndexes = this._getLetterIndexes(topPoints),
+            // 
+            // console.log(numberIndexes);
+            // console.log(letterIndexes);
+
 
             for (var i = 1; i < leftPoints.length; i++) {
                 prev = leftPoints[i-1];
@@ -210,22 +216,22 @@ L.GmxGrid = L.Polyline.extend({
                 leftIndexPointsArr.push(center);
 
                 if (height > INDEXGRIDMINSIZE) {
-                    leftIndexTextMarkers.push('L');
+                    leftIndexTextMarkers.push(numberIndexes[i]);
                 } else {
                     leftIndexTextMarkers.push('');
                 }
             }
 
-            for (var i = 1; i < topPoints.length; i++) {
-                prev = topPoints[i-1];
-                cur = topPoints[i];
+            for (var j = 1; j < topPoints.length; j++) {
+                prev = topPoints[j-1];
+                cur = topPoints[j];
                 width = cur.x - prev.x;
                 center = L.point([prev.x + width / 2, prev.y]);
 
                 topIndexPointsArr.push(center);
 
                 if (width > INDEXGRIDMINSIZE) {
-                    topIndexTextMarkers.push('T');
+                    topIndexTextMarkers.push(letterIndexes[j-1]);
                 } else {
                     topIndexTextMarkers.push('');
                 }
@@ -238,6 +244,59 @@ L.GmxGrid = L.Polyline.extend({
         }
 
         return false;
+    },
+
+    // return array of string representing numbers (['1', '2', '3'...])
+    _getNumberIndexes: function (array) {
+        var res = [];
+
+        for (var i = 0; i < array.length; i++) {
+            res.push(String(i));
+        }
+
+        return res;
+    },
+
+    // return array of string letters (['A'...'Z', 'AA'...'ZZ'...])
+    _getLetterIndexes: function (array) {
+        var len = array.length;
+        var convert = function(srcNum, scrDict, targetDict) {
+           var targetNum = "";
+           for (var idx in srcNum) {
+              var srcDictIdx = scrDict.search(srcNum[idx]);
+              targetNum += targetDict[srcDictIdx]
+           }
+           return targetNum;
+        }
+
+        var buildLettersArray = function (num) {
+            var xlsDict = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+                jsDict  = "0123456789abcdefghijklmnop",
+                dictLength = xlsDict.length,
+                radix = xlsDict.length,
+                numStart = 0,
+                numEnd = num,
+                rnt = [];
+
+            for (var col = numStart; col <= numEnd; col++) {
+               // Unfortunately, the situation is not ideal, we have A...Z and then
+               // AA ... AZ, while A represents the zero digit, so in numbers it is
+               // like having 0..9 and then 00..09 and only then 10...19
+               // so we artificially emulate 00...09 situation here
+               var prefix = "";
+               var num = col;
+               if (col >= radix) {
+                   num = col - radix;
+               }
+               if (col >= radix && col < radix*2) {
+                   prefix = "A";
+               }
+               var jsNum = Number(num).toString(radix);
+               rnt.push(prefix + convert(jsNum, jsDict, xlsDict));
+            }
+            return rnt;
+        };
+        return buildLettersArray(len);
     },
 
     // get left & top borders latlngs arrays (including borders)
