@@ -22,7 +22,8 @@ L.GmxGrid = L.Polyline.extend({
         },
         units: 'degrees',
         titleFormat: 0,		// string format for degree titles 0 - decimal, 1 - degree + minutes , 2 - degree + minutes + seconds(decimal)
-        clickable: false
+        clickable: false,
+        indexGrid: false
     },
 
     initialize: function (options) {
@@ -202,7 +203,7 @@ L.GmxGrid = L.Polyline.extend({
                 topPoints = topAndLefts.topPoints;
                 numberIndexes = this._getNumberIndexes(leftPoints),
                 letterIndexes = this._getLetterIndexes(topPoints),
-            // 
+            //
             // console.log(numberIndexes);
             // console.log(letterIndexes);
 
