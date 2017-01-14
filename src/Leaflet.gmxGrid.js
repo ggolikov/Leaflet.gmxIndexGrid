@@ -186,63 +186,54 @@ L.GmxGrid = L.Polyline.extend({
                 textMarkers.push(this.formatFloat(y), '');
             }
         }
+
+        if (indexGrid) {
+            var obj = this._getIndexObject(latlngArr, vBounds),
+                points = obj.points,
+                indexes = this._getIndexArray(obj),
+                indexPointsArr = [],
+                indexTextMarkers = [],
+                cur, prev,
+                height, width, center;
+console.log(obj);
+console.log(indexes);
+            for (var i = 1; i < points.length; i++) {
+                prev = points[i-1];
+                cur = points[i];
+                height = cur.y - prev.y;
+                width = cur.x - prev.x;
+
+                if (height) {
+                    center = L.point([cur.x, prev.y + height / 2]);
+
+                    if (Math.abs(height) > INDEXGRIDMINSIZE) {
+                        indexTextMarkers.push(indexes[i]);
+                    } else {
+                        indexTextMarkers.push('');
+                    }
+                }
+
+                if (width) {
+                    center = L.point([prev.x + width / 2, prev.y]);
+
+                    if (Math.abs(width) > INDEXGRIDMINSIZE) {
+                        indexTextMarkers.push(indexes[i]);
+                    } else {
+                        indexTextMarkers.push('');
+                    }
+                }
+
+                indexPointsArr.push(center);
+                L.marker(L.latLng(map.unproject(center))).addTo(map);
+            }
+
+            this.options.indexPointsArr = indexPointsArr;
+            this.options.indexTextMarkers = indexTextMarkers;
+        }
+
         this.setStyle({'stroke': true, 'weight': this.options.weight, 'color': this.options.color});
         this.options.textMarkers = textMarkers;
         this.setLatLngs(latlngArr);
-
-        if (indexGrid) {
-            var leftIndexPointsArr = [],
-                leftIndexTextMarkers = [],
-                topIndexPointsArr = [],
-                topIndexTextMarkers = [],
-                cur, prev,
-                height, width, center;
-
-            var topAndLefts = this._getTopAndLeftPoints(latlngArr, vBounds),
-                leftPoints = topAndLefts.leftPoints,
-                topPoints = topAndLefts.topPoints;
-                numberIndexes = this._getNumberIndexes(leftPoints),
-                letterIndexes = this._getLetterIndexes(topPoints),
-            //
-            // console.log(numberIndexes);
-            // console.log(letterIndexes);
-
-
-            for (var i = 1; i < leftPoints.length; i++) {
-                prev = leftPoints[i-1];
-                cur = leftPoints[i];
-                height = cur.y - prev.y;
-                center = L.point([cur.x, prev.y + height / 2]);
-
-                leftIndexPointsArr.push(center);
-
-                if (height > INDEXGRIDMINSIZE) {
-                    leftIndexTextMarkers.push(numberIndexes[i]);
-                } else {
-                    leftIndexTextMarkers.push('');
-                }
-            }
-
-            for (var j = 1; j < topPoints.length; j++) {
-                prev = topPoints[j-1];
-                cur = topPoints[j];
-                width = cur.x - prev.x;
-                center = L.point([prev.x + width / 2, prev.y]);
-
-                topIndexPointsArr.push(center);
-
-                if (width > INDEXGRIDMINSIZE) {
-                    topIndexTextMarkers.push(letterIndexes[j-1]);
-                } else {
-                    topIndexTextMarkers.push('');
-                }
-            }
-
-            this.options.leftIndexPointsArr = leftIndexPointsArr;
-            this.options.topIndexPointsArr = topIndexPointsArr;
-            this.options.leftIndexTextMarkers = leftIndexTextMarkers;
-            this.options.topIndexTextMarkers = topIndexTextMarkers;
-        }
 
         return false;
     },
@@ -251,7 +242,7 @@ L.GmxGrid = L.Polyline.extend({
     _getNumberIndexes: function (array) {
         var res = [];
 
-        for (var i = 0; i < array.length; i++) {
+        for (var i = array.length - 1; i > 0; i--) {
             res.push(String(i));
         }
 
@@ -297,11 +288,23 @@ L.GmxGrid = L.Polyline.extend({
             }
             return rnt;
         };
+
         return buildLettersArray(len);
     },
 
+    // return concatenated array of indexes
+    _getIndexArray: function (obj) {
+        var leftPoints = obj.leftPoints,
+            topPoints = obj.topPoints,
+            numberIndexes = this._getNumberIndexes(leftPoints),
+            letterIndexes = this._getLetterIndexes(topPoints),
+            indexes = numberIndexes.concat(letterIndexes);
+
+        return indexes;
+    },
+
     // get left & top borders latlngs arrays (including borders)
-    _getTopAndLeftPoints: function (latLngs, bounds) {
+    _getIndexObject: function (latLngs, bounds) {
         var len = latLngs.length,
             sw = bounds.getSouthWest(),
             ne = bounds.getNorthEast(),
@@ -311,7 +314,8 @@ L.GmxGrid = L.Polyline.extend({
             topLatLngs = [],
             leftLatLngs = [],
             leftPoints,
-            leftLatLngs,
+            topPoints,
+            points,
             ll, lat, lng;
 
         lats.push(sw.lat);
@@ -337,14 +341,14 @@ L.GmxGrid = L.Polyline.extend({
 
         // count leftLatLngs:
         lng = lngs[0];
-        for (var i = 0; i < lats.length; i++) {
+        for (var i = lats.length - 1; i >= 0; i--) {
             ll = L.latLng([lats[i], lng]);
             leftLatLngs.push(ll);
         }
 
         // count topLatLngs:
         lat = lats[0];
-        for (var j = 0; j < lngs.length; j++) {
+        for (var j = 1; j < lngs.length; j++) {
             ll = L.latLng([lat, lngs[j]]);
             topLatLngs.push(ll);
         }
@@ -355,11 +359,12 @@ L.GmxGrid = L.Polyline.extend({
         topPoints = topLatLngs.map(function(latLng){
             return map.latLngToLayerPoint(latLng);
         });
-
+        points = leftPoints.concat(topPoints);
 
         return {
             leftPoints: leftPoints,
-            topPoints: topPoints
+            topPoints: topPoints,
+            points: points
         }
     },
 
@@ -427,34 +432,31 @@ L.GmxGrid = L.Polyline.extend({
     },
 
     _addIndexPath: function (options) {
-        if (options.leftIndexPointsArr) {
-            var leftArr = options.leftIndexPointsArr;
-            for (var i = 0; i < leftArr.length; i++) {
-                var p = leftArr[i];
-                if (options.leftIndexTextMarkers && options.leftIndexTextMarkers[i]) {
-                    var text = this._createElement('text'),
-                        dx = 20,
-                        dy = 0;
-                        // text.setAttribute('text-anchor', 'middle');
-                    text.setAttribute('x', p.x + dx);
-                    text.setAttribute('y', p.y + dy);
-                    text.textContent = options.leftIndexTextMarkers[i];
-                    this._containerText.appendChild(text);
-                }
-            }
-        }
-        if (options.topIndexPointsArr) {
-            var topArr = options.topIndexPointsArr;
-            for (var j = 0; j < topArr.length; j++) {
-                var p = topArr[j];
-                if (options.topIndexTextMarkers && options.topIndexTextMarkers[j]) {
+        if (options.indexPointsArr) {
+            var arr = options.indexPointsArr;
+            for (var i = 0; i < arr.length-1; i++) {
+                var p = arr[i],
+                    p1 = arr[i+1];
+                if (options.textMarkers && options.indexTextMarkers[i]) {
                     var text = this._createElement('text'),
                         dx = 0,
+                        dy = 3;
+
+                    if (p.y === p1.y) {
+                        dx = 0;
                         dy = 20;
-                        // text.setAttribute('text-anchor', 'middle');
+                    }
+                    if (p.x === p1.x) {
+                        text.setAttribute('text-anchor', 'middle');
+                        dx = 20;
+                        dy = 3;
+                    }
+
+                    text.setAttribute('text-anchor', 'middle');
                     text.setAttribute('x', p.x + dx);
                     text.setAttribute('y', p.y + dy);
-                    text.textContent = options.topIndexTextMarkers[j];
+                    text.setAttribute('fill', '#f57c00');
+                    text.textContent = options.indexTextMarkers[i];
                     this._containerText.appendChild(text);
                 }
             }
