@@ -40,7 +40,7 @@
 				</head>
 				<body>
 					<div id="map"></div>
-				    <div id="infoPanel" style="display:none">
+				    <div id="infoPanel">
 				        <span id="info">
 				                Set grid color:
 				                <button id="setColor">black/white</button>
@@ -55,6 +55,8 @@
 												<span>  |  </span>
 												<button id="setStep">set step</button>
 												<button id="resetStep">reset step</button>
+												<span>  |  </span>
+												<button id="setIndexGrid">set indexGrid</button>
 				        </span>
 				    </div>
 
@@ -65,12 +67,14 @@
 						});
 						var map = new L.Map('map', {layers: [osm], center: new L.LatLng(50, 20), zoom: 3});
 
-				        var grid = L.gmxGrid({indexGrid: true}).addTo(map);
+				        var grid = L.gmxGrid().addTo(map);
 
 				        var setColorBtn 	= document.getElementById("setColor"),
 				            setStepBtn 		= document.getElementById("setStep"),
-										resetStepBtn 	= document.getElementById("resetStep"),
-										setUnitsBtn 	= document.getElementById("setUnits");
+							resetStepBtn 	= document.getElementById("resetStep"),
+							setUnitsBtn 	= document.getElementById("setUnits"),
+							setIndexGrid	= document.getElementById("setIndexGrid")
+
 
 								function updateInputsValues() {
 										xStep.value = grid.options.customStep.x ? Math.floor(grid.options.customStep.x) : grid.options.defaultStep.x;
@@ -87,6 +91,10 @@
 
 				        setColorBtn.onclick = function () {
 				            grid.options.color === 'black' ? grid.setColor('white') : grid.setColor('black');
+				        };
+
+						setIndexGrid.onclick = function () {
+				            grid.options.indexGrid === true ? grid.setIndexGrid(false) : grid.setIndexGrid(true);
 				        };
 
 								setStepBtn.onclick = function () {

@@ -91,6 +91,7 @@ L.GmxGrid = L.Polyline.extend({
 
     setIndexGrid: function (bool) {
         this.options.indexGrid = bool;
+        this.repaint();
     },
 
     setTitleFormat: function (format) {
@@ -195,8 +196,7 @@ L.GmxGrid = L.Polyline.extend({
                 indexTextMarkers = [],
                 cur, prev,
                 height, width, center;
-console.log(obj);
-console.log(indexes);
+
             for (var i = 1; i < points.length; i++) {
                 prev = points[i-1];
                 cur = points[i];
@@ -207,7 +207,7 @@ console.log(indexes);
                     center = L.point([cur.x, prev.y + height / 2]);
 
                     if (Math.abs(height) > INDEXGRIDMINSIZE) {
-                        indexTextMarkers.push(indexes[i]);
+                        indexTextMarkers.push(indexes[i-1]);
                     } else {
                         indexTextMarkers.push('');
                     }
@@ -217,16 +217,14 @@ console.log(indexes);
                     center = L.point([prev.x + width / 2, prev.y]);
 
                     if (Math.abs(width) > INDEXGRIDMINSIZE) {
-                        indexTextMarkers.push(indexes[i]);
+                        indexTextMarkers.push(indexes[i-1]);
                     } else {
                         indexTextMarkers.push('');
                     }
                 }
 
                 indexPointsArr.push(center);
-                L.marker(L.latLng(map.unproject(center))).addTo(map);
             }
-
             this.options.indexPointsArr = indexPointsArr;
             this.options.indexTextMarkers = indexTextMarkers;
         }
@@ -238,20 +236,19 @@ console.log(indexes);
         return false;
     },
 
-    // return array of string representing numbers (['1', '2', '3'...])
-    _getNumberIndexes: function (array) {
+    // get array of string representing numbers (['1', '2', '3'...])
+    _getNumberIndexes: function (number) {
         var res = [];
 
-        for (var i = array.length - 1; i > 0; i--) {
+        for (var i = number; i > 0; i--) {
             res.push(String(i));
         }
 
         return res;
     },
 
-    // return array of string letters (['A'...'Z', 'AA'...'ZZ'...])
-    _getLetterIndexes: function (array) {
-        var len = array.length;
+    // get array of string letters (['A'...'Z', 'AA'...'ZZ'...])
+    _getLetterIndexes: function (number) {
         var convert = function(srcNum, scrDict, targetDict) {
            var targetNum = "";
            for (var idx in srcNum) {
@@ -289,15 +286,15 @@ console.log(indexes);
             return rnt;
         };
 
-        return buildLettersArray(len);
+        return buildLettersArray(number);
     },
 
-    // return concatenated array of indexes
+    // get concatenated array of indexes
     _getIndexArray: function (obj) {
-        var leftPoints = obj.leftPoints,
-            topPoints = obj.topPoints,
-            numberIndexes = this._getNumberIndexes(leftPoints),
-            letterIndexes = this._getLetterIndexes(topPoints),
+        var left = obj.left,
+            top = obj.top,
+            numberIndexes = this._getNumberIndexes(left),
+            letterIndexes = this._getLetterIndexes(top),
             indexes = numberIndexes.concat(letterIndexes);
 
         return indexes;
@@ -337,17 +334,16 @@ console.log(indexes);
 
         lats.push(ne.lat);
         lngs.push(ne.lng);
-        lats = lats.reverse();
 
-        // count leftLatLngs:
+        // count leftLatLngs (bottom to top):
         lng = lngs[0];
-        for (var i = lats.length - 1; i >= 0; i--) {
+        for (var i = 0; i < lats.length; i++) {
             ll = L.latLng([lats[i], lng]);
             leftLatLngs.push(ll);
         }
 
-        // count topLatLngs:
-        lat = lats[0];
+        // count topLatLngs (left to right):
+        lat = lats[lats.length - 1];
         for (var j = 1; j < lngs.length; j++) {
             ll = L.latLng([lat, lngs[j]]);
             topLatLngs.push(ll);
@@ -362,8 +358,8 @@ console.log(indexes);
         points = leftPoints.concat(topPoints);
 
         return {
-            leftPoints: leftPoints,
-            topPoints: topPoints,
+            left: leftPoints.length - 1,
+            top: topPoints.length - 1,
             points: points
         }
     },
@@ -431,25 +427,32 @@ console.log(indexes);
         return str;
     },
 
+    // add index path string to the grid
     _addIndexPath: function (options) {
         if (options.indexPointsArr) {
             var arr = options.indexPointsArr;
-            for (var i = 0; i < arr.length-1; i++) {
-                var p = arr[i],
-                    p1 = arr[i+1];
+            for (var i = 0; i < arr.length; i++) {
                 if (options.textMarkers && options.indexTextMarkers[i]) {
                     var text = this._createElement('text'),
-                        dx = 0,
+                        dx = 20,
                         dy = 3;
 
-                    if (p.y === p1.y) {
+                    var p = arr[i];
+
+                    if (i < arr.length - 1) {
+                        var p1 = arr[i+1];
+                        if (p.y === p1.y) {
+                            dx = 0;
+                            dy = 20;
+                        }
+                        if (p.x === p1.x) {
+                            text.setAttribute('text-anchor', 'middle');
+                            dx = 20;
+                            dy = 3;
+                        }
+                    } else {
                         dx = 0;
                         dy = 20;
-                    }
-                    if (p.x === p1.x) {
-                        text.setAttribute('text-anchor', 'middle');
-                        dx = 20;
-                        dy = 3;
                     }
 
                     text.setAttribute('text-anchor', 'middle');
