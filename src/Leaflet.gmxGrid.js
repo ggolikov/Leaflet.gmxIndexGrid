@@ -189,7 +189,7 @@ L.GmxGrid = L.Polyline.extend({
         }
 
         if (indexGrid) {
-            var obj = this._getIndexObject(latlngArr, vBounds),
+            var obj = this._getIndexObject(latlngArr, vBounds, map),
                 points = obj.points,
                 indexes = this._getIndexArray(obj),
                 indexPointsArr = [],
@@ -197,9 +197,9 @@ L.GmxGrid = L.Polyline.extend({
                 cur, prev,
                 height, width, center;
 
-            for (var i = 1; i < points.length; i++) {
-                prev = points[i-1];
-                cur = points[i];
+            for (var j = 1; j < points.length; j++) {
+                prev = points[j-1];
+                cur = points[j];
                 height = cur.y - prev.y;
                 width = cur.x - prev.x;
 
@@ -207,7 +207,7 @@ L.GmxGrid = L.Polyline.extend({
                     center = L.point([cur.x, prev.y + height / 2]);
 
                     if (Math.abs(height) > INDEXGRIDMINSIZE) {
-                        indexTextMarkers.push(indexes[i-1]);
+                        indexTextMarkers.push(indexes[j-1]);
                     } else {
                         indexTextMarkers.push('');
                     }
@@ -217,7 +217,7 @@ L.GmxGrid = L.Polyline.extend({
                     center = L.point([prev.x + width / 2, prev.y]);
 
                     if (Math.abs(width) > INDEXGRIDMINSIZE) {
-                        indexTextMarkers.push(indexes[i-1]);
+                        indexTextMarkers.push(indexes[j-1]);
                     } else {
                         indexTextMarkers.push('');
                     }
@@ -261,7 +261,6 @@ L.GmxGrid = L.Polyline.extend({
         var buildLettersArray = function (num) {
             var xlsDict = "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
                 jsDict  = "0123456789abcdefghijklmnop",
-                dictLength = xlsDict.length,
                 radix = xlsDict.length,
                 numStart = 0,
                 numEnd = num,
@@ -273,14 +272,14 @@ L.GmxGrid = L.Polyline.extend({
                // like having 0..9 and then 00..09 and only then 10...19
                // so we artificially emulate 00...09 situation here
                var prefix = "";
-               var num = col;
+               var numb = col;
                if (col >= radix) {
-                   num = col - radix;
+                   numb = col - radix;
                }
                if (col >= radix && col < radix*2) {
                    prefix = "A";
                }
-               var jsNum = Number(num).toString(radix);
+               var jsNum = Number(numb).toString(radix);
                rnt.push(prefix + convert(jsNum, jsDict, xlsDict));
             }
             return rnt;
@@ -301,7 +300,7 @@ L.GmxGrid = L.Polyline.extend({
     },
 
     // get left & top borders latlngs arrays (including borders)
-    _getIndexObject: function (latLngs, bounds) {
+    _getIndexObject: function (latLngs, bounds, map) {
         var len = latLngs.length,
             sw = bounds.getSouthWest(),
             ne = bounds.getNorthEast(),
@@ -337,15 +336,15 @@ L.GmxGrid = L.Polyline.extend({
 
         // count leftLatLngs (bottom to top):
         lng = lngs[0];
-        for (var i = 0; i < lats.length; i++) {
-            ll = L.latLng([lats[i], lng]);
+        for (var j = 0; j < lats.length; j++) {
+            ll = L.latLng([lats[j], lng]);
             leftLatLngs.push(ll);
         }
 
         // count topLatLngs (left to right):
         lat = lats[lats.length - 1];
-        for (var j = 1; j < lngs.length; j++) {
-            ll = L.latLng([lat, lngs[j]]);
+        for (var k = 1; k < lngs.length; k++) {
+            ll = L.latLng([lat, lngs[k]]);
             topLatLngs.push(ll);
         }
 
